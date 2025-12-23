@@ -43,8 +43,27 @@
                         alt="Download on the App Store" width="120" height="40">
                 </a>
             </div>
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" aria-label="Toggle Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
     </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu">
+        <a href="/blog">Blog</a>
+        <button class="lang-switcher" data-lang-switch="ko" aria-label="Switch to Korean">
+            <i data-lucide="globe"></i> KO
+        </button>
+        <a href="https://apps.apple.com/kr/app/planbuddy-%EA%B3%84%ED%9A%8D-%EC%8B%9C%EA%B0%84%EA%B8%B0%EB%A1%9D-%EB%A3%A8%ED%8B%B4/id6748593892"
+            class="btn-app-store">
+            <img src="resource/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.webp"
+                alt="Download on the App Store" width="120" height="40">
+        </a>
+    </div>
 
     <header class="hero">
         <div class="container hero-content">
@@ -71,7 +90,6 @@
     <!-- Scroll Story Section (Replacing Timeline) -->
     <!-- Story Section (Hover Interaction) -->
     <section class="story-section">
-        <h2 class="visually-hidden">Key Workflow</h2>
         <div class="container">
             <div class="story-grid">
                 <!-- Left: Text Items (Triggers) -->
@@ -116,7 +134,6 @@
     </section>
     <!-- Detailed Features Section (Interactive) -->
     <section class="details-section">
-        <h2 class="visually-hidden">Detailed Features</h2>
         <div class="container">
             <div class="details-grid">
                 <!-- Interactive Visual (Left) -->
@@ -230,6 +247,7 @@
     <script>
         lucide.createIcons();
     </script>
+    <script src="navbar.js"></script>
 </body>
 
 </html>

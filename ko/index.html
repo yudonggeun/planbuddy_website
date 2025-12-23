@@ -32,7 +32,6 @@
                 <img src="../resource/planbuddy-logo.webp" alt="PlanBuddy" width="130" height="32" class="logo-img">
             </a>
             <div class="nav-links">
-                <a href="/blog">Blog</a>
                 <button class="lang-switcher" data-lang-switch="en" aria-label="Switch to English">
                     <i data-lucide="globe"></i> EN
                 </button>
@@ -42,8 +41,29 @@
                         alt="Download on the App Store" width="120" height="40">
                 </a>
             </div>
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" aria-label="메뉴 열기/닫기">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
     </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu">
+        <a href="/blog">Blog</a>
+        <a href="#features">기능</a>
+        <a href="#reviews">후기</a>
+        <button class="lang-switcher" data-lang-switch="en" aria-label="Switch to English">
+            <i data-lucide="globe"></i> EN
+        </button>
+        <a href="https://apps.apple.com/kr/app/planbuddy-%EA%B3%84%ED%9A%8D-%EC%8B%9C%EA%B0%84%EA%B8%B0%EB%A1%9D-%EB%A3%A8%ED%8B%B4/id6748593892"
+            class="btn-app-store">
+            <img src="../resource/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.webp"
+                alt="Download on the App Store" width="120" height="40">
+        </a>
+    </div>
 
     <header class="hero">
         <div class="container hero-content">
@@ -70,7 +90,6 @@
     <!-- Scroll Story Section (Replacing Timeline) -->
     <!-- Story Section (Hover Interaction) -->
     <section class="story-section">
-        <h2 class="visually-hidden">주요 기능 안내</h2>
         <div class="container">
             <div class="story-grid">
                 <!-- Left: Text Items (Triggers) -->
@@ -92,22 +111,22 @@
                 <!-- Right: Visual Display -->
                 <div class="story-visual-container">
                     <!-- Layer 1: Timeline -->
-                    <img src="../resource/plan_and_record.webp" alt="PlanBuddy 타임라인"
+                    <img src="../resource/plan_and_record.webp" alt="PlanBuddy Timeline"
                         class="story-visual-item story-timeline active">
 
                     <!-- Layer 2: Timer -->
                     <div class="story-visual-item story-timer">
                         <div class="flip-timer-container">
-                            <img src="../resource/fliptimer_blue.webp" class="flip-img flip-blue" alt="파란색 타이머">
-                            <img src="../resource/fliptimer_green.webp" class="flip-img flip-green" alt="초록색 타이머">
+                            <img src="../resource/fliptimer_blue.webp" class="flip-img flip-blue">
+                            <img src="../resource/fliptimer_green.webp" class="flip-img flip-green">
                         </div>
                     </div>
 
                     <!-- Layer 3: Stats -->
                     <div class="story-visual-item story-stats">
-                        <img src="../resource/treemap.webp" class="stat-img stat-treemap" alt="트리맵 차트">
-                        <img src="../resource/barchart.webp" class="stat-img stat-bar" alt="막대 차트">
-                        <img src="../resource/piechart.webp" class="stat-img stat-pie" alt="원형 차트">
+                        <img src="../resource/treemap.webp" class="stat-img stat-treemap">
+                        <img src="../resource/barchart.webp" class="stat-img stat-bar">
+                        <img src="../resource/piechart.webp" class="stat-img stat-pie">
                     </div>
                 </div>
             </div>
@@ -115,7 +134,6 @@
     </section>
     <!-- Detailed Features Section (Interactive) -->
     <section class="details-section">
-        <h2 class="visually-hidden">상세 기능</h2>
         <div class="container">
             <div class="details-grid">
                 <!-- Interactive Visual (Left) -->
@@ -126,17 +144,18 @@
                     </div>
                     <div class="detail-visual-interactive">
                         <img src="../resource/ios_integrate.webp" data-key="ios" class="interactive-img active"
-                            alt="iOS 통합">
+                            alt="iOS Integration">
                         <img src="../resource/calendar_sync.webp" data-key="calendar" class="interactive-img"
-                            alt="캘린더 연동">
+                            alt="Calendar Sync">
                         <!-- Customization uses the flip timers -->
                         <div data-key="custom" class="interactive-custom">
-                            <img src="../resource/fliptimer_blue.webp" class="flip-blue-sm" alt="파란색 테마">
-                            <img src="../resource/fliptimer_green.webp" class="flip-green-sm" alt="초록색 테마">
+                            <img src="../resource/fliptimer_blue.webp" class="flip-blue-sm">
+                            <img src="../resource/fliptimer_green.webp" class="flip-green-sm">
                         </div>
-                        <img src="../resource/White Noise.webp" data-key="noise" class="interactive-img" alt="백색 소음">
-                        <img src="../resource/export.webp" data-key="pdf" class="interactive-img" alt="PDF 내보내기">
-                        <img src="../resource/darkmode.webp" data-key="dark" class="interactive-img" alt="다크 모드">
+                        <img src="../resource/White Noise.webp" data-key="noise" class="interactive-img"
+                            alt="White Noise">
+                        <img src="../resource/export.webp" data-key="pdf" class="interactive-img" alt="PDF Export">
+                        <img src="../resource/darkmode.webp" data-key="dark" class="interactive-img" alt="Dark Mode">
                     </div>
                 </div>
 
@@ -216,9 +235,9 @@
                     <p class="copyright">© 2025 PlanBuddy. All rights reserved.</p>
                 </div>
                 <div class="footer-links">
-                    <a href="/ko/privacy">개인정보 처리방침</a>
-                    <a href="/ko/terms">이용약관</a>
-                    <a href="mailto:nadadoc.dev@gmail.com">문의하기</a>
+                    <a href="#">개인정보 처리방침</a>
+                    <a href="#">이용약관</a>
+                    <a href="#">문의하기</a>
                 </div>
             </div>
         </div>
@@ -229,7 +248,7 @@
     <script>
         lucide.createIcons();
     </script>
+    <script src="../navbar.js"></script>
 </body>
-
 
 </html>
