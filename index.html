@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlanBuddy - 계획, 시간기록, 루틴</title>
+    <meta name="description" content="PlanBuddy로 하루를 완벽하게 관리하세요. 계획 수립부터 시간 기록, 루틴 관리까지 한 번에.">
+    <link rel="icon" href="facicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Base styles just in case css fails to load initially */
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="#" class="logo">
+                <img src="resource/planbuddy-logo.webp" alt="PlanBuddy" width="130" height="32" class="logo-img">
+            </a>
+            <div class="nav-links">
+                <a href="#features">기능</a>
+                <a href="#reviews">후기</a>
+                <a href="https://apps.apple.com/kr/app/planbuddy-%EA%B3%84%ED%9A%8D-%EC%8B%9C%EA%B0%84%EA%B8%B0%EB%A1%9D-%EB%A3%A8%ED%8B%B4/id6748593892"
+                    class="btn-app-store">
+                    <img src="resource/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.webp"
+                        alt="Download on the App Store" width="120" height="40">
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container hero-content">
+            <div class="hero-badge">✨ 더 나은 하루를 위한 선택</div>
+            <h1 class="hero-title">계획과 기록,<br>그리고 <span class="text-gradient">완벽한 루틴</span>.</h1>
+            <p class="hero-subtitle">
+                PlanBuddy는 복잡한 하루를 단순하게 만들어줍니다.<br>
+                직관적인 타임라인과 강력한 통계로 당신의 성장을 기록하세요.
+            </p>
+            <div class="hero-actions">
+                <a href="https://apps.apple.com/kr/app/planbuddy-%EA%B3%84%ED%9A%8D-%EC%8B%9C%EA%B0%84%EA%B8%B0%EB%A1%9D-%EB%A3%A8%ED%8B%B4/id6748593892"
+                    class="btn-app-store-large">
+                    <img src="resource/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.webp"
+                        alt="Download on the App Store" width="180" height="60">
+                </a>
+            </div>
+            <div class="hero-image-wrapper">
+                <!-- Placeholder for App Screenshot -->
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Scroll Story Section (Replacing Timeline) -->
+    <!-- Story Section (Hover Interaction) -->
+    <section class="story-section">
+        <div class="container">
+            <div class="story-grid">
+                <!-- Left: Text Items (Triggers) -->
+                <div class="story-text-list">
+                    <div class="story-item active" data-step="1">
+                        <h3>계획</h3>
+                        <p>연동된 캘린더의 일정과 실행 기록을<br>한눈에 비교하세요.</p>
+                    </div>
+                    <div class="story-item" data-step="2">
+                        <h3>시간 기록</h3>
+                        <p>한 번의 터치로<br>쉽게 기록을 시작하세요.</p>
+                    </div>
+                    <div class="story-item" data-step="3">
+                        <h3>회고</h3>
+                        <p>다양한 통계로 스스로를<br>객관적으로 이해할 수 있어요.</p>
+                    </div>
+                </div>
+
+                <!-- Right: Visual Display -->
+                <div class="story-visual-container">
+                    <!-- Layer 1: Timeline -->
+                    <img src="resource/plan_and_record.webp" alt="PlanBuddy Timeline"
+                        class="story-visual-item story-timeline active">
+
+                    <!-- Layer 2: Timer -->
+                    <div class="story-visual-item story-timer">
+                        <div class="flip-timer-container">
+                            <img src="resource/fliptimer_blue.webp" class="flip-img flip-blue">
+                            <img src="resource/fliptimer_green.webp" class="flip-img flip-green">
+                        </div>
+                    </div>
+
+                    <!-- Layer 3: Stats -->
+                    <div class="story-visual-item story-stats">
+                        <img src="resource/treemap.webp" class="stat-img stat-treemap">
+                        <img src="resource/barchart.webp" class="stat-img stat-bar">
+                        <img src="resource/piechart.webp" class="stat-img stat-pie">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Detailed Features Section (Interactive) -->
+    <section class="details-section">
+        <div class="container">
+            <div class="details-grid">
+                <!-- Interactive Visual (Left) -->
+                <div class="detail-card card-interactive">
+                    <div class="detail-content">
+                        <h3 id="detail-title">완벽한 iOS 통합</h3>
+                        <p id="detail-desc">아이폰의 모든 기능을 활용해<br>더 빠르고 편하게 기록하세요.</p>
+                    </div>
+                    <div class="detail-visual-interactive">
+                        <img src="resource/ios_integrate.webp" data-key="ios" class="interactive-img active"
+                            alt="iOS Integration">
+                        <img src="resource/calendar_sync.webp" data-key="calendar" class="interactive-img"
+                            alt="Calendar Sync">
+                        <!-- Customization uses the flip timers -->
+                        <div data-key="custom" class="interactive-custom">
+                            <img src="resource/fliptimer_blue.webp" class="flip-blue-sm">
+                            <img src="resource/fliptimer_green.webp" class="flip-green-sm">
+                        </div>
+                        <img src="resource/White Noise.webp" data-key="noise" class="interactive-img" alt="White Noise">
+                        <img src="resource/export.webp" data-key="pdf" class="interactive-img" alt="PDF Export">
+                        <img src="resource/darkmode.webp" data-key="dark" class="interactive-img" alt="Dark Mode">
+                    </div>
+                </div>
+
+                <!-- Feature List (Right Column - Triggers) -->
+                <div class="detail-list">
+                    <!-- 0. iOS Integration (New) -->
+                    <div class="feature-item active" data-target="ios">
+                        <div class="feature-icon bg-blue"><i data-lucide="smartphone"></i></div>
+                        <div class="feature-text">
+                            <h4>iOS 완벽 통합</h4>
+                            <p>아이폰의 모든 기능을 활용하세요.</p>
+                        </div>
+                    </div>
+                    <!-- 1. Calendar -->
+                    <div class="feature-item" data-target="calendar">
+                        <div class="feature-icon bg-blue"><i data-lucide="calendar"></i></div>
+                        <div class="feature-text">
+                            <h4>캘린더 연동</h4>
+                            <p>기존 일정과 기록을 한 곳에서 관리하세요.</p>
+                        </div>
+                    </div>
+                    <!-- 2. Customization (Moved Flip Timer here) -->
+                    <div class="feature-item" data-target="custom">
+                        <div class="feature-icon bg-indigo"><i data-lucide="palette"></i></div>
+                        <div class="feature-text">
+                            <h4>타이머 커스터마이징</h4>
+                            <p>나만의 스타일로 타이머를 꾸며보세요.</p>
+                        </div>
+                    </div>
+                    <!-- 3. White Noise -->
+                    <div class="feature-item" data-target="noise">
+                        <div class="feature-icon bg-cyan"><i data-lucide="headphones"></i></div>
+                        <div class="feature-text">
+                            <h4>8가지 백색소음</h4>
+                            <p>집중력을 높여주는 다양한 사운드.</p>
+                        </div>
+                    </div>
+                    <!-- 4. PDF Export -->
+                    <div class="feature-item" data-target="pdf">
+                        <div class="feature-icon bg-rose"><i data-lucide="file-text"></i></div>
+                        <div class="feature-text">
+                            <h4>PDF 내보내기</h4>
+                            <p>나의 기록을 깔끔한 리포트로 저장하세요.</p>
+                        </div>
+                    </div>
+                    <!-- 5. Dark Mode -->
+                    <div class="feature-item" data-target="dark">
+                        <div class="feature-icon bg-slate"><i data-lucide="moon"></i></div>
+                        <div class="feature-text">
+                            <h4>다크 모드</h4>
+                            <p>밤에도 눈이 편안한 다크 모드를 지원합니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2>지금 바로 시작하세요</h2>
+            <p>더 나은 내일을 위한 가장 확실한 방법, PlanBuddy.</p>
+            <a href="https://apps.apple.com/kr/app/planbuddy-%EA%B3%84%ED%9A%8D-%EC%8B%9C%EA%B0%84%EA%B8%B0%EB%A1%9D-%EB%A3%A8%ED%8B%B4/id6748593892"
+                class="btn-app-custom">
+                <span class="btn-text">
+                    <span class="small-text">Download on the</span>
+                    <span class="large-text">App Store</span>
+                </span>
+            </a>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <p class="copyright">© 2025 PlanBuddy. All rights reserved.</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#">개인정보 처리방침</a>
+                    <a href="#">이용약관</a>
+                    <a href="#">문의하기</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
