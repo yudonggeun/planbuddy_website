@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- English Home -->
+  <url>
+    <loc>https://planbuddy.com/</loc>
+    <lastmod>2025-12-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planbuddy.com/" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planbuddy.com/ko/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planbuddy.com/" />
+  </url>
+  <!-- Korean Home -->
+  <url>
+    <loc>https://planbuddy.com/ko/</loc>
+    <lastmod>2025-12-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planbuddy.com/" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planbuddy.com/ko/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planbuddy.com/" />
+  </url>
+  
+  <!-- English Terms -->
+  <url>
+    <loc>https://planbuddy.com/terms</loc>
+    <lastmod>2025-12-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planbuddy.com/terms" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planbuddy.com/ko/terms" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planbuddy.com/terms" />
+  </url>
+  <!-- Korean Terms -->
+  <url>
+    <loc>https://planbuddy.com/ko/terms</loc>
+    <lastmod>2025-12-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planbuddy.com/terms" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planbuddy.com/ko/terms" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planbuddy.com/terms" />
+  </url>
+
+  <!-- English Privacy -->
+  <url>
+    <loc>https://planbuddy.com/privacy</loc>
+    <lastmod>2025-12-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planbuddy.com/privacy" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planbuddy.com/ko/privacy" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planbuddy.com/privacy" />
+  </url>
+  <!-- Korean Privacy -->
+  <url>
+    <loc>https://planbuddy.com/ko/privacy</loc>
+    <lastmod>2025-12-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planbuddy.com/privacy" />
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planbuddy.com/ko/privacy" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planbuddy.com/privacy" />
+  </url>
+</urlset>
