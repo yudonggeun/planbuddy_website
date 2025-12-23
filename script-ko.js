@@ -42,31 +42,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailTitle = document.getElementById('detail-title');
     const detailDesc = document.getElementById('detail-desc');
 
-    // Content Map
+    // Content Map (Korean)
     const contentMap = {
         'ios': {
-            title: 'Perfect iOS Integration',
-            desc: 'Leverage all iPhone features<br>to track faster and easier.'
+            title: '완벽한 iOS 통합',
+            desc: '아이폰의 모든 기능을 활용해<br>더 빠르고 편하게 기록하세요.'
         },
         'calendar': {
-            title: 'Calendar Sync',
-            desc: 'Manage events and records<br>in one place.'
+            title: '캘린더 연동',
+            desc: '기존 일정과 기록을<br>한 곳에서 관리하세요.'
         },
         'custom': {
-            title: 'Timer Customization',
-            desc: 'Personalize your timer<br>with your own style.'
+            title: '타이머 커스터마이징',
+            desc: '나만의 스타일로<br>타이머를 꾸며보세요.'
         },
         'noise': {
-            title: '8 White Noise Sounds',
-            desc: 'Various sounds<br>to boost your focus.'
+            title: '8가지 백색소음',
+            desc: '집중력을 높여주는<br>다양한 사운드.'
         },
         'pdf': {
-            title: 'PDF Export',
-            desc: 'Save your records<br>as clean reports.'
+            title: 'PDF 내보내기',
+            desc: '나의 기록을 깔끔한<br>리포트로 저장하세요.'
         },
         'dark': {
-            title: 'Dark Mode',
-            desc: 'Eye-friendly dark mode<br>for nighttime use.'
+            title: '다크 모드',
+            desc: '밤에도 눈이 편안한<br>다크 모드를 지원합니다.'
         }
     };
 
