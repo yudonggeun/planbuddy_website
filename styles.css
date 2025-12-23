@@ -190,7 +190,8 @@ ul {
     display: inline-block;
     padding: 6px 16px;
     background: #EFF6FF;
-    color: var(--primary-blue);
+    color: #1e40af;
+    /* Darker blue for better contrast */
     border-radius: 999px;
     font-size: 0.9rem;
     font-weight: 600;
@@ -213,6 +214,19 @@ ul {
     /* background: linear-gradient(135deg, var(--primary-blue) 0%, #60A5FA 100%); */
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+/* Accessibility Utility */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .hero-subtitle {
@@ -708,9 +722,7 @@ ul {
 }
 
 .card-interactive.bg-pdf h3,
-.card-interactive.bg-pdf p,
-.card-interactive.bg-calendar h3,
-.card-interactive.bg-calendar p {
+.card-interactive.bg-pdf p {
     color: white;
 }
 

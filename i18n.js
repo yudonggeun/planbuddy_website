@@ -32,16 +32,20 @@
             return; // Already on correct language
         }
 
+        // Determine current page type
+        let pageType = '';
+        if (currentPath.includes('/terms')) {
+            pageType = '/terms';
+        } else if (currentPath.includes('/privacy')) {
+            pageType = '/privacy';
+        }
+
         if (targetLang === 'ko') {
             // Redirect to Korean version
-            if (!currentPath.includes('/ko/')) {
-                window.location.href = '/ko/';
-            }
+            window.location.href = '/ko' + pageType;
         } else {
             // Redirect to English version
-            if (currentPath.includes('/ko/')) {
-                window.location.href = '/';
-            }
+            window.location.href = pageType || '/';
         }
     }
 
