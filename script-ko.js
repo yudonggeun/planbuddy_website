@@ -17,17 +17,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function updateStoryVisual(step) {
-        // Reset all visuals
-        const visuals = document.querySelectorAll('.story-visual-item');
-        visuals.forEach(v => v.classList.remove('active'));
+        const timeline = document.querySelector('.story-timeline');
+        const timer = document.querySelector('.story-timer');
+        const stats = document.querySelector('.story-stats');
 
-        // Activate specific visual matching the step
-        if (step === '1') {
-            document.querySelector('.story-timeline').classList.add('active');
-        } else if (step === '2') {
-            document.querySelector('.story-timer').classList.add('active');
+        if (step === '1' || step === '2') {
+            // Steps 1 & 2: Show Video (Timeline)
+            // Only add class if not already active to prevent restart/flicker
+            if (!timeline.classList.contains('active')) {
+                timeline.classList.add('active');
+            }
+            timer.classList.remove('active');
+            stats.classList.remove('active');
         } else if (step === '3') {
-            document.querySelector('.story-stats').classList.add('active');
+            // Step 3: Show Stats
+            if (!stats.classList.contains('active')) {
+                stats.classList.add('active');
+            }
+            timeline.classList.remove('active');
+            timer.classList.remove('active');
         }
     }
 

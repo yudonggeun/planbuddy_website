@@ -967,7 +967,8 @@ body.no-scroll {
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+/* Responsive adjustments */
+@media (max-width: 1024px) {
     .hero-title {
         font-size: 2.5rem;
     }
