@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0D0F12">
+  <title>Cliff — 절벽 등반</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      margin: 0; height: 100%;
+      overflow: hidden;
+      background: #0D0F12;
+      touch-action: none;
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
+      overscroll-behavior: none;
+      font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+      color: #F5F0E8;
+    }
+
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .hidden { display: none !important; }
+
+    /* ---------- HUD ---------- */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      text-align: center;
+      padding-top: calc(env(safe-area-inset-top) + 12px);
+      pointer-events: none;
+      text-shadow: 0 2px 10px rgba(13, 15, 18, .85);
+    }
+    #hudH { font-size: 42px; font-weight: 800; line-height: 1.05; letter-spacing: -.5px; }
+    #hudBest { font-size: 13px; font-weight: 600; color: #888; margin-top: 2px; }
+
+    /* ---------- 분석 완료 배지 ---------- */
+    #badge {
+      position: fixed;
+      top: calc(env(safe-area-inset-top) + 12px); right: 12px;
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(22, 26, 31, .92);
+      border: 1px solid #2E3540;
+      border-radius: 9999px;
+      padding: 7px 13px;
+      font-size: 12px; font-weight: 700;
+      pointer-events: none;
+      opacity: 0; transform: translateY(-6px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+    #badge.on { opacity: 1; transform: none; }
+    #badge span { color: #FF6730; }
+
+    /* ---------- 오버레이 ---------- */
+    .overlay {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      padding-top: calc(env(safe-area-inset-top) + 24px);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+      background: rgba(13, 15, 18, .55);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      opacity: 0; pointer-events: none;
+      transition: opacity .35s ease;
+    }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+
+    .panel {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+      width: min(320px, 86vw);
+    }
+    .card {
+      background: #161A1F;
+      border: 1px solid #2E3540;
+      border-radius: 24px;
+      padding: 30px 24px 24px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .5);
+    }
+
+    .kicker { font-size: 12px; font-weight: 800; letter-spacing: .22em; color: #FF6730; margin-bottom: 10px; }
+    h1 { font-size: 36px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 14px; }
+    h2 { font-size: 21px; font-weight: 800; margin-bottom: 2px; }
+    .howto { font-size: 15px; line-height: 1.65; color: #888; font-weight: 600; margin-bottom: 20px; }
+    .score { font-size: 46px; font-weight: 800; color: #FF6730; line-height: 1.15; margin: 8px 0 4px; }
+    .bestline { font-size: 14px; font-weight: 700; color: #888; margin-bottom: 20px; }
+    .bestline .new { color: #FF6730; margin-left: 6px; }
+
+    .btn {
+      display: block; width: 100%;
+      border: none; border-radius: 9999px;
+      padding: 15px 36px;
+      font-family: inherit; font-size: 17px; font-weight: 800;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease, filter .12s ease;
+    }
+    .btn:active { transform: scale(.96); filter: brightness(1.12); }
+    .btn + .btn { margin-top: 10px; }
+    .btn.primary {
+      background: linear-gradient(180deg, #FF6730, #E74408 58%, #B03206);
+      color: #FFF7EF;
+      box-shadow: 0 8px 22px rgba(231, 68, 8, .35);
+    }
+    .btn.secondary {
+      background: #161A1F;
+      border: 1px solid #2E3540;
+      color: #F5F0E8;
+    }
+    #start .btn { width: auto; min-width: 210px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="hudH">0m</div>
+    <div id="hudBest"></div>
+  </div>
+
+  <div id="badge">분석 완료 <span>✓</span></div>
+
+  <div id="start" class="overlay">
+    <div class="panel">
+      <p class="kicker">CLIFF GAME</p>
+      <h1>절벽 등반</h1>
+      <p class="howto">탭해서 팔이 향한 홀드를 잡으세요<br>물이 차오르기 전에 더 높이!</p>
+      <p id="startBest" class="bestline hidden"></p>
+      <button id="btnStart" class="btn primary">시작하기</button>
+    </div>
+  </div>
+
+  <div id="over" class="overlay">
+    <div class="panel card">
+      <h2>물에 빠졌어요!</h2>
+      <div id="overH" class="score">0m</div>
+      <p id="overBest" class="bestline"></p>
+      <button id="btnResult" class="btn primary hidden">분석 결과 보기 →</button>
+      <button id="btnRetry" class="btn secondary">다시 도전</button>
+    </div>
+  </div>
+
+  <script src="cliff-bridge.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* 브라우저 단독 접속 등 브리지 로드 실패 시 no-op 폴백 */
+    var Bridge = window.CliffBridge || {
+      inApp: false,
+      contentStart: function () {},
+      contentEnd: function () {},
+      isProcessingDone: function () { return false; },
+      onProcessingDone: function () {},
+    };
+
+    /* ---------- DOM ---------- */
+    var cv = document.getElementById('c');
+    var ctx = cv.getContext('2d');
+    var hud = document.getElementById('hud');
+    var hudH = document.getElementById('hudH');
+    var hudBest = document.getElementById('hudBest');
+    var badge = document.getElementById('badge');
+    var startOv = document.getElementById('start');
+    var overOv = document.getElementById('over');
+    var startBestEl = document.getElementById('startBest');
+    var overHEl = document.getElementById('overH');
+    var overBestEl = document.getElementById('overBest');
+    var btnStart = document.getElementById('btnStart');
+    var btnRetry = document.getElementById('btnRetry');
+    var btnResult = document.getElementById('btnResult');
+
+    /* ---------- 상수 ---------- */
+    var TAU = Math.PI * 2;
+    var REACH = 110;                       // 손 뻗기 반경 (월드 px)
+    var GRAB_ARC = 27 * Math.PI / 180;     // 팔 각도 허용 오차 ±27°
+    var ARM_AMP = 100 * Math.PI / 180;     // 팔 스윙 진폭 ±100°
+    var ARM_PERIOD = 1.15;                 // 팔 스윙 주기 (s)
+    var ARM_W = TAU / ARM_PERIOD;
+    var HANG = 38;                         // 홀드 아래 매달림 거리
+    var PX_PER_M = 40;                     // 1m = 40px
+    var GRAB_DUR = 0.25;                   // 잡기 애니메이션 (s)
+    var SLIP_LOCK = 0.2;                   // 미끄러짐 입력 잠금 (s)
+    var GEN_DIST_MIN = 60, GEN_DIST_MAX = 105;
+    var GEN_ARC = 50 * Math.PI / 180;      // 홀드 생성 부채꼴 ±50°
+    var WATER_GAP0 = 170;                  // 시작 시 물과의 간격
+    var WATER_BASE = 13, WATER_ACCEL = 0.5, WATER_M = 0.3, WATER_MAX = 60;
+    var WATER_GAP_CAP = 520;               // 물이 뒤처질 수 있는 최대 간격
+
+    /* ---------- 뷰포트 ---------- */
+    var W = 0, H = 0, DPR = 1, wallHalf = 150, edgeGrad = null;
+    function resize() {
+      W = window.innerWidth; H = window.innerHeight;
+      DPR = Math.min(window.devicePixelRatio || 1, 3);
+      cv.width = Math.round(W * DPR);
+      cv.height = Math.round(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      wallHalf = Math.min(W, 460) / 2 - 46;
+      edgeGrad = ctx.createLinearGradient(0, 0, W, 0);
+      edgeGrad.addColorStop(0, 'rgba(0,0,0,0.5)');
+      edgeGrad.addColorStop(0.16, 'rgba(0,0,0,0)');
+      edgeGrad.addColorStop(0.84, 'rgba(0,0,0,0)');
+      edgeGrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+    }
+    window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', resize);
+    resize();
+
+    /* ---------- 유틸 ---------- */
+    var rand = Math.random;
+    function rnd(seed) { var s = Math.sin(seed * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+    function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+    function lerp(a, b, k) { return a + (b - a) * k; }
+    function easeOut(k) { var t = 1 - k; return 1 - t * t * t; }
+    /* 월드 좌표: y는 위로 증가. 화면 변환: */
+    function sx(wx) { return W / 2 + wx; }
+    function sy(wy) { return H * 0.62 - (wy - camY); }
+
+    /* ---------- 게임 상태 ---------- */
+    var state = 'start';            // 'start' | 'playing' | 'over'
+    var holds = [], chainTop = null, grip = null;
+    var body = { x: 0, y: 0 }, maxY = 0, camY = 0;
+    var water = 0, elapsed = 0, gT = 0;
+    var armT = 0, armDir = 1, gripHand = 'R';
+    var grabAnim = null, lockT = 0, slipFlashT = 0, shakeT = 0, swayT = 0, sinkT = 0;
+    var particles = [], bubbles = [];
+    var best = 0, newBest = false, lastHudM = -1, cullT = 0, overShown = false;
+    try { best = parseInt(localStorage.getItem('cliffClimberBest') || '0', 10) || 0; } catch (e) {}
+
+    /* ---------- 홀드 생성 ---------- */
+    function holdSpacingOk(x, y) {
+      for (var i = 0; i < holds.length; i++) {
+        var dx = holds[i].x - x, dy = holds[i].y - y;
+        if (dx * dx + dy * dy < 36 * 36) return false;
+      }
+      return true;
+    }
+    function pushHold(x, y) {
+      var h = { x: x, y: y, seed: Math.floor(rand() * 1e6) };
+      holds.push(h);
+      return h;
+    }
+    /* (ax, ay) = 매달린 몸 위치 기준으로 부채꼴 내 홀드 생성 → 항상 닿을 수 있음 */
+    function spawnFrom(ax, ay, extendChain) {
+      for (var t = 0; t < 6; t++) {
+        var ang = clamp((rand() * 2 - 1) * GEN_ARC - (ax / wallHalf) * 0.55, -GEN_ARC, GEN_ARC);
+        var dist = GEN_DIST_MIN + rand() * (GEN_DIST_MAX - GEN_DIST_MIN);
+        var x = clamp(ax + Math.sin(ang) * dist, -wallHalf, wallHalf);
+        var y = ay + Math.cos(ang) * dist;
+        if (holdSpacingOk(x, y) || t === 5) {
+          var h = pushHold(x, y);
+          if (extendChain) chainTop = h;
+          return h;
+        }
+      }
+      return null;
+    }
+    function genAhead() {
+      var guard = 0;
+      while (chainTop.y < camY + H * 1.3 && guard++ < 60) {
+        var ax = chainTop.x, ay = chainTop.y - HANG;
+        spawnFrom(ax, ay, true);
+        if (rand() < 0.35) spawnFrom(ax, ay, false); // 보너스 홀드 (선택지)
+      }
+    }
+    function reachableExists() {
+      for (var i = 0; i < holds.length; i++) {
+        var h = holds[i];
+        if (h === grip) continue;
+        var dx = h.x - body.x, dy = h.y - body.y;
+        if (dy < 24) continue;
+        if (dx * dx + dy * dy > 105 * 105) continue;
+        if (Math.abs(Math.atan2(dx, dy)) > GEN_ARC) continue;
+        return true;
+      }
+      return false;
+    }
+    function ensureReachable() {
+      if (!reachableExists()) spawnFrom(body.x, body.y, false);
+    }
+    function cullHolds() {
+      var cutoff = camY - H * 1.2;
+      holds = holds.filter(function (h) { return h === grip || h.y > cutoff; });
+    }
+
+    /* ---------- 파티클 ---------- */
+    function burst(wx, wy, kind) {
+      var n = kind === 'splash' ? 22 : kind === 'pop' ? 10 : 8;
+      for (var i = 0; i < n; i++) {
+        var a = rand() * TAU;
+        var sp = kind === 'splash' ? 50 + rand() * 150 : kind === 'pop' ? 40 + rand() * 90 : 25 + rand() * 60;
+        var col = kind === 'dust' ? 'rgba(150,150,150,'
+          : kind === 'pop' ? (rand() < 0.5 ? 'rgba(255,103,48,' : 'rgba(231,68,8,')
+          : (rand() < 0.6 ? 'rgba(150,220,235,' : 'rgba(245,240,232,');
+        particles.push({
+          x: wx, y: wy,
+          vx: Math.cos(a) * sp,
+          vy: Math.abs(Math.sin(a)) * sp * (kind === 'splash' ? 1.4 : 0.9) + 20,
+          life: 0, max: 0.35 + rand() * 0.35, col: col, r: 1.5 + rand() * 2.2,
+        });
+      }
+    }
+    function initBubbles() {
+      bubbles = [];
+      for (var i = 0; i < 9; i++) {
+        bubbles.push({
+          x: (rand() * 2 - 1) * wallHalf,
+          y: water - rand() * 260,
+          r: 1.5 + rand() * 2.5,
+          v: 18 + rand() * 22,
+        });
+      }
+    }
+
+    /* ---------- 등반 메커니즘 ---------- */
+    function armAngle() { return ARM_AMP * Math.sin(ARM_W * armT) * armDir; }
+    function meters() { return Math.max(0, Math.floor((maxY + HANG) / PX_PER_M)); }
+
+    function tryGrab() {
+      if (lockT > 0 || grabAnim) return;
+      var aAng = armAngle();
+      var bestHold = null, bestD = 1e9;
+      for (var i = 0; i < holds.length; i++) {
+        var h = holds[i];
+        if (h === grip) continue;
+        if (h.y < water + 24) continue;
+        var dx = h.x - body.x, dy = h.y - body.y;
+        var d2 = dx * dx + dy * dy;
+        if (d2 > REACH * REACH || d2 < 14 * 14) continue;
+        var diff = Math.atan2(dx, dy) - aAng;
+        diff = ((diff + Math.PI) % TAU + TAU) % TAU - Math.PI;
+        if (Math.abs(diff) > GRAB_ARC) continue;
+        if (d2 < bestD) { bestD = d2; bestHold = h; }
+      }
+      if (bestHold) startGrab(bestHold); else slip();
+    }
+
+    function startGrab(h) {
+      var prev = grip;
+      grip = h;
+      gripHand = gripHand === 'L' ? 'R' : 'L';
+      grabAnim = { t: 0, fx: body.x, fy: body.y };
+      /* 새 자유 팔(=직전 잡았던 팔)이 이전 홀드 방향에서 이어서 스윙 시작 */
+      var nx = h.x, ny = h.y - HANG;
+      var ta = Math.atan2(prev.x - nx, prev.y - ny);
+      armDir = -armDir;
+      armT = Math.asin(clamp(ta / (ARM_AMP * armDir), -1, 1)) / ARM_W;
+      burst(h.x, h.y, 'pop');
+    }
+
+    function slip() {
+      lockT = SLIP_LOCK;
+      slipFlashT = 0.25;
+      shakeT = 0.25;
+      var a = armAngle();
+      burst(body.x + Math.sin(a) * 34, body.y + 9 + Math.cos(a) * 34, 'dust');
+    }
+
+    /* ---------- 리셋 / 시작 / 게임오버 ---------- */
+    function resetGame() {
+      holds = []; particles = [];
+      var startHold = pushHold(0, 0);
+      chainTop = startHold; grip = startHold;
+      body.x = 0; body.y = -HANG; maxY = body.y;
+      water = body.y - WATER_GAP0;
+      camY = body.y + 30;
+      elapsed = 0; armT = 0;
+      armDir = rand() < 0.5 ? -1 : 1;
+      gripHand = 'R';
+      grabAnim = null; lockT = 0; slipFlashT = 0; shakeT = 0; swayT = 0; sinkT = 0;
+      newBest = false; lastHudM = -1; cullT = 0;
+      genAhead();
+      initBubbles();
+      hudH.textContent = '0m';
+      hudBest.textContent = best > 0 ? '최고 ' + best + 'm' : '';
+    }
+
+    function setBadge() {
+      badge.classList.toggle('on', state === 'playing' && Bridge.isProcessingDone());
+    }
+    function refreshResultCta() {
+      btnResult.classList.toggle('hidden', !(Bridge.inApp && Bridge.isProcessingDone()));
+    }
+
+    function beginRun() {
+      Bridge.contentStart();          // 매 판 시작마다 (첫 시작 + 다시 도전)
+      resetGame();
+      state = 'playing';
+      overShown = false;
+      startOv.classList.remove('show');
+      overOv.classList.remove('show');
+      hud.classList.remove('hidden');
+      setBadge();
+    }
+
+    function drown() {
+      state = 'over';
+      burst(body.x, body.y, 'splash');
+      var m = meters();
+      newBest = false;
+      if (m > best) {
+        best = m; newBest = true;
+        try { localStorage.setItem('cliffClimberBest', String(best)); } catch (e) {}
+      }
+      overHEl.textContent = m + 'm';
+      overBestEl.innerHTML = '최고 기록 ' + best + 'm' + (newBest ? ' <span class="new">★ NEW!</span>' : '');
+      refreshResultCta();
+      setBadge();
+      setTimeout(function () {
+        if (state !== 'over') return;
+        overOv.classList.add('show');
+        overShown = true;
+      }, 650);
+    }
+
+    /* ---------- 업데이트 ---------- */
+    function update(dt) {
+      if (state === 'playing') {
+        elapsed += dt;
+        armT += dt;
+        if (lockT > 0) lockT -= dt;
+
+        var spd = Math.min(WATER_MAX, WATER_BASE + elapsed * WATER_ACCEL + meters() * WATER_M);
+        water += spd * dt;
+        if (body.y - water > WATER_GAP_CAP) water = body.y - WATER_GAP_CAP;
+
+        if (grabAnim) {
+          grabAnim.t += dt;
+          var k = easeOut(Math.min(1, grabAnim.t / GRAB_DUR));
+          body.x = lerp(grabAnim.fx, grip.x, k);
+          body.y = lerp(grabAnim.fy, grip.y - HANG, k);
+          if (grabAnim.t >= GRAB_DUR) { grabAnim = null; swayT = 0; ensureReachable(); }
+        } else {
+          swayT += dt;
+          body.x = grip.x + Math.sin(swayT * 2.1) * 4;
+          body.y = grip.y - HANG;
+        }
+        if (body.y > maxY) maxY = body.y;
+
+        genAhead();
+        cullT += dt;
+        if (cullT > 2) { cullT = 0; cullHolds(); }
+
+        if (water >= body.y - 12) drown();
+
+        var mm = meters();
+        if (mm !== lastHudM) {
+          lastHudM = mm;
+          hudH.textContent = mm + 'm';
+        }
+      } else if (state === 'over') {
+        sinkT += dt;
+        if (sinkT < 1.1) body.y -= 24 * dt;  // 살짝 가라앉음
+      } else {
+        armT += dt; // 시작 화면: 팔 스윙만 아이들 재생
+      }
+
+      camY += (body.y + 30 - camY) * Math.min(1, dt * 6);
+      if (slipFlashT > 0) slipFlashT -= dt;
+      if (shakeT > 0) shakeT -= dt;
+
+      for (var i = particles.length - 1; i >= 0; i--) {
+        var p = particles[i];
+        p.life += dt;
+        if (p.life >= p.max) { particles.splice(i, 1); continue; }
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 300 * dt;
+      }
+      for (var j = 0; j < bubbles.length; j++) {
+        var b = bubbles[j];
+        b.y += b.v * dt;
+        if (b.y > water - 4) { b.y = water - 140 - rand() * 240; b.x = (rand() * 2 - 1) * wallHalf; }
+      }
+    }
+
+    /* ---------- 렌더 ---------- */
+    function drawWall() {
+      ctx.fillStyle = '#1C2129';
+      ctx.fillRect(-12, -12, W + 24, H + 24);
+
+      /* 어두운 바위 패치 (패럴랙스 0.7) */
+      var f = 0.7, off = camY * f, B = 210;
+      var i0 = Math.floor((off - H) / B), i1 = Math.ceil((off + H) / B), i;
+      for (i = i0; i <= i1; i++) {
+        var py = H * 0.62 - (i * B + rnd(i * 3.7) * B - off);
+        if (py < -90 || py > H + 90) continue;
+        var px = (rnd(i * 7.3) * 1.4 - 0.2) * W;
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, 40 + rnd(i * 1.3) * 70, 22 + rnd(i * 9.1) * 34, (rnd(i * 4.9) - 0.5) * 1.2, 0, TAU);
+        ctx.fill();
+      }
+
+      /* 균열 (패럴랙스 0.5) — 어두운 선 + 엣지 하이라이트 */
+      f = 0.5; off = camY * f; B = 170;
+      i0 = Math.floor((off - H) / B); i1 = Math.ceil((off + H) / B);
+      for (i = i0; i <= i1; i++) {
+        var cy = H * 0.62 - (i * B + rnd(i * 5.1) * B - off);
+        if (cy < -160 || cy > H + 40) continue;
+        var pts = [[rnd(i * 11.7) * W, cy]];
+        for (var s = 0; s < 4; s++) {
+          pts.push([
+            pts[s][0] + (rnd(i * 13 + s) - 0.5) * 64,
+            pts[s][1] + 22 + rnd(i * 17 + s) * 46,
+          ]);
+        }
+        ctx.strokeStyle = 'rgba(9,11,14,0.55)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(46,53,64,0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0] + 1.5, pts[0][1] + 1);
+        for (s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0] + 1.5, pts[s][1] + 1);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = edgeGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function drawHolds() {
+      for (var i = 0; i < holds.length; i++) {
+        var h = holds[i];
+        var x = sx(h.x), y = sy(h.y);
+        if (y < -40 || y > H + 40) continue;
+        var s = h.seed, r = 11 + rnd(s) * 4;
+        ctx.fillStyle = '#3D4957';
+        ctx.beginPath();
+        ctx.ellipse(x, y, r * 1.3, r * 0.95, (rnd(s + 1) - 0.5) * 0.9, 0, TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x - r * (0.55 + rnd(s + 2) * 0.3), y + r * 0.22, r * 0.62, r * 0.5, 0.45, 0, TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x + r * (0.5 + rnd(s + 3) * 0.35), y + r * 0.18, r * 0.58, r * 0.46, -0.5, 0, TAU);
+        ctx.fill();
+        /* 상단 하이라이트 */
+        ctx.fillStyle = '#5A6A7E';
+        ctx.beginPath();
+        ctx.ellipse(x - r * 0.2, y - r * 0.42, r * 0.6, r * 0.26, (rnd(s + 4) - 0.5) * 0.5, 0, TAU);
+        ctx.fill();
+        /* 하단 음영 */
+        ctx.strokeStyle = 'rgba(13,15,18,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y + 1, r * 1.12, 0.35, Math.PI - 0.35);
+        ctx.stroke();
+      }
+    }
+
+    function drawArm(x1, y1, x2, y2, color, bend) {
+      var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      var dx = x2 - x1, dy = y2 - y1;
+      var dl = Math.sqrt(dx * dx + dy * dy) || 1;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo(mx - dy / dl * 7 * bend, my + dx / dl * 7 * bend, x2, y2);
+      ctx.stroke();
+    }
+
+    function drawClimber() {
+      var bx = sx(body.x), by = sy(body.y);
+      var shX = bx, shY = by - 9;
+      ctx.lineCap = 'round';
+
+      if (state === 'over') {
+        /* 익사: 양팔을 위로 허우적 */
+        drawArm(shX, shY, shX - 18, shY - 24, '#E74408', -1);
+        drawArm(shX, shY, shX + 20, shY - 22, '#E74408', 1);
+      } else {
+        /* 잡고 있는 팔 → 홀드까지 */
+        var gx = sx(grip.x), gy = sy(grip.y);
+        drawArm(shX, shY, gx, gy, '#E74408', gripHand === 'L' ? -1 : 1);
+        ctx.fillStyle = '#FF6730';
+        ctx.beginPath(); ctx.arc(gx, gy, 4.2, 0, TAU); ctx.fill();
+
+        /* 자유 팔 (스윙) */
+        var a = armAngle();
+        var flash = slipFlashT > 0;
+        var armCol = flash ? (Math.floor(slipFlashT * 30) % 2 ? '#F5F0E8' : '#FF6730') : '#E74408';
+        var tipX = shX + Math.sin(a) * 30, tipY = shY - Math.cos(a) * 30;
+        ctx.strokeStyle = armCol;
+        ctx.lineWidth = 4.5;
+        ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(tipX, tipY); ctx.stroke();
+        /* 펼친 손 (빈 원) */
+        ctx.strokeStyle = flash ? armCol : '#FF6730';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.arc(tipX, tipY, 4.6, 0, TAU); ctx.stroke();
+      }
+
+      /* 다리 */
+      var lw = Math.sin(swayT * 2.1 + 1.3) * 3;
+      ctx.strokeStyle = '#B03206';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(bx - 5, by + 8); ctx.quadraticCurveTo(bx - 7 + lw, by + 16, bx - 9 + lw, by + 22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx + 5, by + 8); ctx.quadraticCurveTo(bx + 7 + lw, by + 16, bx + 10 + lw, by + 23); ctx.stroke();
+
+      /* 몸통 */
+      var tg = ctx.createLinearGradient(0, by - 14, 0, by + 13);
+      tg.addColorStop(0, '#FF6730');
+      tg.addColorStop(1, '#B03206');
+      ctx.fillStyle = tg;
+      ctx.beginPath(); ctx.ellipse(bx, by, 10.5, 12.5, 0, 0, TAU); ctx.fill();
+
+      /* 머리 + 헬멧 하이라이트 + 헤드램프 */
+      var hx = bx + Math.sin(swayT * 2.1) * 1.2, hy = by - 18;
+      var hg = ctx.createLinearGradient(0, hy - 9, 0, hy + 9);
+      hg.addColorStop(0, '#FF6730');
+      hg.addColorStop(1, '#E74408');
+      ctx.fillStyle = hg;
+      ctx.beginPath(); ctx.arc(hx, hy, 8, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(245,240,232,0.95)';
+      ctx.beginPath(); ctx.arc(hx - 2.5, hy - 3, 2.4, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.arc(hx + 3, hy - 3.5, 1.4, 0, TAU); ctx.fill();
+    }
+
+    function drawParticles() {
+      for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        var al = (1 - p.life / p.max) * 0.9;
+        ctx.fillStyle = p.col + al.toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(sx(p.x), sy(p.y), p.r, 0, TAU);
+        ctx.fill();
+      }
+    }
+
+    function drawWater() {
+      var wy = sy(water);
+      if (wy > H + 50) return;
+      var pts = [], x;
+      for (x = -10; x <= W + 12; x += 14) {
+        pts.push([x, wy + Math.sin(x * 0.045 + gT * 2.6) * 3.5 + Math.sin(x * 0.012 - gT * 1.4) * 2.5]);
+      }
+      var i;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.lineTo(W + 12, H + 14);
+      ctx.lineTo(-10, H + 14);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(38,108,140,0.45)';
+      ctx.fill();
+      /* 깊은 물 레이어 */
+      if (wy + 26 < H) {
+        ctx.fillStyle = 'rgba(16,52,76,0.4)';
+        ctx.fillRect(-10, wy + 26, W + 20, H - wy);
+      }
+      /* 수면 라인 */
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.strokeStyle = 'rgba(150,220,235,0.6)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1] + 6);
+      for (i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1] + 6);
+      ctx.strokeStyle = 'rgba(150,220,235,0.18)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      /* 기포 */
+      ctx.strokeStyle = 'rgba(180,230,240,0.35)';
+      ctx.lineWidth = 1.2;
+      for (i = 0; i < bubbles.length; i++) {
+        var b = bubbles[i];
+        var bsy = sy(b.y);
+        if (bsy < wy + 8 || bsy > H + 10) continue;
+        ctx.beginPath();
+        ctx.arc(sx(b.x + Math.sin(gT * 2 + b.r * 5) * 3), bsy, b.r, 0, TAU);
+        ctx.stroke();
+      }
+    }
+
+    function drawVignette() {
+      if (state !== 'playing') return;
+      var gap = body.y - water;
+      if (gap >= 150) return;
+      var k = 1 - Math.max(0, gap) / 150;
+      var al = k * 0.32 * (0.65 + 0.35 * Math.sin(elapsed * 7));
+      var g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
+      g.addColorStop(0, 'rgba(231,68,8,0)');
+      g.addColorStop(1, 'rgba(231,68,8,' + al.toFixed(3) + ')');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function render() {
+      ctx.fillStyle = '#0D0F12';
+      ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      if (shakeT > 0) {
+        var s = shakeT / 0.25 * 7;
+        ctx.translate((rand() * 2 - 1) * s, (rand() * 2 - 1) * s);
+      }
+      drawWall();
+      drawHolds();
+      drawClimber();
+      drawParticles();
+      drawWater();
+      ctx.restore();
+      drawVignette();
+    }
+
+    /* ---------- 루프 ---------- */
+    var lastT = 0;
+    function loop(ts) {
+      var t = ts / 1000;
+      var dt = Math.min(0.033, lastT ? t - lastT : 0.016);
+      lastT = t;
+      gT = t;
+      update(dt);
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    /* ---------- 입력 ---------- */
+    window.addEventListener('pointerdown', function (e) {
+      if (state !== 'playing') return;
+      e.preventDefault();
+      tryGrab();
+    }, { passive: false });
+
+    window.addEventListener('keydown', function (e) {
+      if (e.code !== 'Space' && e.code !== 'ArrowUp') return;
+      if (e.repeat) return;
+      e.preventDefault();
+      if (state === 'playing') tryGrab();
+      else if (state === 'start') beginRun();
+      else if (state === 'over' && overShown) beginRun();
+    });
+
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+    btnStart.addEventListener('click', beginRun);
+    btnRetry.addEventListener('click', beginRun);
+    btnResult.addEventListener('click', function () { Bridge.contentEnd(); });
+
+    /* ---------- 브리지 ---------- */
+    Bridge.onProcessingDone(function () {
+      setBadge();          // 플레이 중이면 우상단 배지
+      refreshResultCta();  // 게임오버 화면이 떠 있으면 CTA 라이브 노출
+    });
+
+    /* ---------- 초기화 ---------- */
+    resetGame();
+    if (best > 0) {
+      startBestEl.textContent = '최고 기록 ' + best + 'm';
+      startBestEl.classList.remove('hidden');
+    }
+    startOv.classList.add('show');
+    requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>
