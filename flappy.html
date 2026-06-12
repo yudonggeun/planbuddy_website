@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0D0F12">
+  <title>Cliff — Climbing Rush</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #0D0F12;
+      overflow: hidden;
+      touch-action: none;
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
+      overscroll-behavior: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%; height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── 색 토큰 (cliff 앱 매칭) ── */
+    var C = {
+      bg:       '#0D0F12',
+      rock:     '#1C2129',
+      rockEdge: '#2E3540',
+      hold:     '#3D4957',
+      holdHi:   '#5A6A7E',
+      player:   '#E74408',
+      playerDk: '#B03206',
+      text:     '#F5F0E8',
+      textMute: '#888888',
+      accent:   '#E74408',
+      overlay:  'rgba(13,15,18,0.72)',
+      gap:      'rgba(229,100,40,0.06)',
+    };
+
+    /* ── DOM / 캔버스 ── */
+    var canvas = document.getElementById('c');
+    var ctx    = canvas.getContext('2d');
+    var dpr    = window.devicePixelRatio || 1;
+    var W, H;
+
+    function resize() {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width  = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', function () { resize(); initPlayerY(); });
+
+    /* ── 게임 상수 ── */
+    var GRAV      = 0.38;
+    var BOOST     = -7.5;
+    var COL_W     = 52;
+    var GAP_H     = 160;
+    var COL_SPEED = 2.8;
+    var SPAWN_GAP = 220;
+    var PLAYER_X  = 80;
+    var PLR_R     = 14;
+
+    /* ── 상태 ── */
+    var STATE = { IDLE: 0, PLAY: 1, DEAD: 2 };
+    var state, score, best, vy, cols, particles, holdTick, bgOffset;
+    var playerY;
+
+    function initPlayerY() { playerY = H * 0.45; }
+
+    function resetAll() {
+      state     = STATE.IDLE;
+      score     = 0;
+      vy        = 0;
+      cols      = [];
+      particles = [];
+      holdTick  = 0;
+      bgOffset  = 0;
+      initPlayerY();
+      spawnCol();
+    }
+
+    best = parseInt(localStorage.getItem('climbRushBest') || '0', 10);
+
+    /* ── 홀드 (기둥 상대좌표) ── */
+    function makeHolds(topH, botY) {
+      var holds = [];
+      function addSeg(segY, segH) {
+        if (segH < 24) return;
+        var n = Math.floor(Math.random() * 3) + 1;
+        for (var i = 0; i < n; i++) {
+          holds.push({
+            rx: 8 + Math.random() * (COL_W - 16),
+            y:  segY + 6 + Math.random() * (segH - 12),
+            r:  3 + Math.random() * 3,
+          });
+        }
+      }
+      addSeg(0, topH);
+      addSeg(botY, H - botY);
+      return holds;
+    }
+
+    /* ── 기둥 스폰 ── */
+    function spawnCol() {
+      var minTop = 70, maxTop = H - GAP_H - 70;
+      if (maxTop < minTop) maxTop = minTop + 20;
+      var topH = minTop + Math.random() * (maxTop - minTop);
+      var botY = topH + GAP_H;
+      cols.push({ x: W + COL_W, topH: topH, botY: botY, holds: makeHolds(topH, botY), passed: false });
+    }
+
+    /* ── 파티클 ── */
+    function boom(x, y) {
+      for (var i = 0; i < 18; i++) {
+        var a = Math.random() * Math.PI * 2;
+        var s = 1.5 + Math.random() * 4;
+        particles.push({ x: x, y: y, vx: Math.cos(a)*s, vy: Math.sin(a)*s - 2, r: 2+Math.random()*4, life: 1.0 });
+      }
+    }
+
+    /* ── 충돌 ── */
+    function hitCol(col) {
+      if (PLAYER_X + PLR_R < col.x || PLAYER_X - PLR_R > col.x + COL_W) return false;
+      if (playerY - PLR_R < col.topH) return true;
+      if (playerY + PLR_R > col.botY) return true;
+      return false;
+    }
+
+    /* ── 드로우 유틸 ── */
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.lineTo(x+w-r, y);  ctx.arcTo(x+w, y, x+w, y+r, r);
+      ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+      ctx.lineTo(x+r, y+h);  ctx.arcTo(x, y+h, x, y+h-r, r);
+      ctx.lineTo(x, y+r);    ctx.arcTo(x, y, x+r, y, r);
+      ctx.closePath();
+    }
+
+    function drawBg() {
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+      ctx.lineWidth = 1;
+      for (var i = 0; i < 7; i++) {
+        var lx = ((i * (W/7) + bgOffset * 0.15) % W + W) % W;
+        ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx + 8, H); ctx.stroke();
+      }
+    }
+
+    function drawCol(col) {
+      ctx.lineWidth = 1.5;
+      if (col.topH > 0) {
+        ctx.fillStyle = C.rock; ctx.strokeStyle = C.rockEdge;
+        roundRect(col.x, 0, COL_W, col.topH, 6); ctx.fill(); ctx.stroke();
+      }
+      if (col.botY < H) {
+        ctx.fillStyle = C.rock; ctx.strokeStyle = C.rockEdge;
+        roundRect(col.x, col.botY, COL_W, H - col.botY, 6); ctx.fill(); ctx.stroke();
+      }
+      ctx.fillStyle = C.gap;
+      ctx.fillRect(col.x, col.topH, COL_W, GAP_H);
+      col.holds.forEach(function (h) {
+        var hx = col.x + h.rx;
+        ctx.beginPath(); ctx.arc(hx, h.y, h.r, 0, Math.PI*2);
+        ctx.fillStyle = C.hold; ctx.fill();
+        ctx.beginPath(); ctx.arc(hx - h.r*0.3, h.y - h.r*0.3, h.r*0.4, 0, Math.PI*2);
+        ctx.fillStyle = C.holdHi; ctx.fill();
+      });
+    }
+
+    function drawPlayer() {
+      var x = PLAYER_X, y = playerY;
+      var lean = Math.min(Math.max(vy * 0.06, -0.4), 0.5);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(lean);
+      // 그림자
+      ctx.beginPath(); ctx.ellipse(2, PLR_R+2, PLR_R*0.7, 4, 0, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill();
+      // 몸체
+      ctx.beginPath(); ctx.arc(0, 0, PLR_R, 0, Math.PI*2);
+      var g = ctx.createRadialGradient(-PLR_R*0.3, -PLR_R*0.3, 1, 0, 0, PLR_R);
+      g.addColorStop(0, '#FF6730'); g.addColorStop(1, C.playerDk);
+      ctx.fillStyle = g; ctx.fill();
+      // 헬멧 하이라이트
+      ctx.beginPath(); ctx.arc(-PLR_R*0.25, -PLR_R*0.35, PLR_R*0.38, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fill();
+      // 팔
+      ctx.strokeStyle = C.player; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-PLR_R*0.5, -PLR_R*0.3); ctx.lineTo(-PLR_R*1.1, -PLR_R*0.9 + Math.sin(holdTick)*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(PLR_R*0.5, -PLR_R*0.3);  ctx.lineTo(PLR_R*1.1,  -PLR_R*0.8 + Math.sin(holdTick+1)*2); ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      particles.forEach(function (p) {
+        ctx.globalAlpha = p.life;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2);
+        ctx.fillStyle = C.player; ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function drawScore() {
+      var sz = Math.max(22, Math.min(Math.min(W,H)*0.07, 44));
+      ctx.font = 'bold '+sz+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+      ctx.textAlign = 'center'; ctx.fillStyle = C.text;
+      ctx.fillText(score, W/2, sz+16);
+    }
+
+    function drawOverlay(title, sub, cta, scoreVal) {
+      ctx.fillStyle = C.overlay; ctx.fillRect(0, 0, W, H);
+      var cy = H*0.40, sz = Math.max(16, Math.min(Math.min(W,H)*0.065, 36));
+      ctx.textAlign = 'center';
+      // 제목
+      ctx.font = 'bold '+(sz*1.3)+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+      ctx.fillStyle = C.text; ctx.fillText(title, W/2, cy - sz*1.2);
+      // 서브
+      if (sub) {
+        ctx.font = (sz*0.72)+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+        ctx.fillStyle = C.textMute; ctx.fillText(sub, W/2, cy - sz*0.3);
+      }
+      // 점수(dead 전용)
+      var btnOffY = 0;
+      if (scoreVal !== null) {
+        ctx.font = 'bold '+(sz*2.2)+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+        ctx.fillStyle = C.accent; ctx.fillText(scoreVal, W/2, cy + sz*1.5);
+        ctx.font = (sz*0.68)+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+        ctx.fillStyle = C.textMute; ctx.fillText('routes completed', W/2, cy + sz*2.3);
+        if (best > 0) {
+          ctx.font = (sz*0.65)+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+          ctx.fillStyle = (scoreVal >= best) ? C.accent : C.textMute;
+          ctx.fillText('Best: '+best+(scoreVal >= best ? '  ★ NEW!' : ''), W/2, cy+sz*3.0);
+        }
+        btnOffY = sz * 4.0;
+      } else {
+        btnOffY = sz * 0.5;
+      }
+      // CTA 버튼
+      var bw = sz*7, bh = sz*1.55, bx = W/2-bw/2, by = cy + btnOffY;
+      ctx.beginPath(); roundRect(bx, by, bw, bh, bh/2);
+      ctx.fillStyle = C.accent; ctx.fill();
+      ctx.font = 'bold '+(sz*0.9)+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+      ctx.fillStyle = C.text; ctx.fillText(cta, W/2, by+bh*0.64);
+      // 베스트 (idle)
+      if (scoreVal === null && best > 0) {
+        ctx.font = (sz*0.65)+'px ui-rounded,"SF Pro Rounded",system-ui,sans-serif';
+        ctx.fillStyle = C.textMute; ctx.fillText('Best: '+best, W/2, by+bh+sz*0.9);
+      }
+    }
+
+    /* ── 메인 루프 ── */
+    function loop() {
+      requestAnimationFrame(loop);
+
+      if (state === STATE.PLAY) {
+        vy += GRAV;
+        playerY += vy;
+        holdTick += 0.12;
+        bgOffset -= COL_SPEED * 0.5;
+
+        for (var i = cols.length-1; i >= 0; i--) {
+          cols[i].x -= COL_SPEED;
+          if (!cols[i].passed && cols[i].x + COL_W < PLAYER_X) {
+            cols[i].passed = true;
+            score++;
+            if (score > best) { best = score; localStorage.setItem('climbRushBest', best); }
+          }
+          if (cols[i].x + COL_W < -10) cols.splice(i, 1);
+        }
+        var last = cols[cols.length-1];
+        if (!last || last.x < W - SPAWN_GAP) spawnCol();
+
+        if (playerY + PLR_R > H || playerY - PLR_R < 0) { boom(PLAYER_X, playerY); state = STATE.DEAD; }
+        for (var j = 0; j < cols.length; j++) {
+          if (hitCol(cols[j])) { boom(PLAYER_X, playerY); state = STATE.DEAD; break; }
+        }
+      } else if (state === STATE.IDLE) {
+        playerY = H*0.45 + Math.sin(Date.now()*0.002)*10;
+        holdTick += 0.06;
+        bgOffset -= 0.5;
+      }
+
+      particles = particles.filter(function (p) {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 0.045; return p.life > 0;
+      });
+
+      drawBg();
+      cols.forEach(drawCol);
+      drawPlayer();
+      drawParticles();
+
+      if (state === STATE.PLAY) drawScore();
+      if (state === STATE.IDLE) drawOverlay('Climbing Rush', 'Tap to grip & climb!', 'START', null);
+      if (state === STATE.DEAD) drawOverlay('Off Route!', null, 'TRY AGAIN', score);
+    }
+
+    resetAll();
+    requestAnimationFrame(loop);
+
+    /* ── 입력 ── */
+    function handleTap(e) {
+      e.preventDefault();
+      if (state === STATE.IDLE) {
+        initPlayerY(); vy = BOOST*0.6; state = STATE.PLAY;
+      } else if (state === STATE.PLAY) {
+        vy = BOOST;
+      } else if (state === STATE.DEAD) {
+        cols = []; particles = []; score = 0; bgOffset = 0;
+        initPlayerY(); vy = BOOST*0.6; spawnCol(); state = STATE.PLAY;
+      }
+    }
+
+    canvas.addEventListener('pointerdown', handleTap, { passive: false });
+    document.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' || e.code === 'ArrowUp') handleTap(e);
+    });
+
+  })();
+  </script>
+</body>
+</html>
