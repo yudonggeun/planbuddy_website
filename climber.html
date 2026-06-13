@@ -36,22 +36,32 @@
     #hudH { font-size: 42px; font-weight: 800; line-height: 1.05; letter-spacing: -.5px; }
     #hudBest { font-size: 13px; font-weight: 600; color: #888; margin-top: 2px; }
 
-    /* ---------- 분석 완료 배지 ---------- */
+    /* ---------- 분석 완료 → 결과 보기 CTA ---------- */
     #badge {
       position: fixed;
       top: calc(env(safe-area-inset-top) + 12px); right: 12px;
-      display: flex; align-items: center; gap: 5px;
-      background: rgba(22, 26, 31, .92);
-      border: 1px solid #2E3540;
+      display: flex; align-items: center; gap: 7px;
+      -webkit-appearance: none; appearance: none;
+      background: rgba(22, 26, 31, .94);
+      border: 1px solid #46342A;
       border-radius: 9999px;
-      padding: 7px 13px;
-      font-size: 12px; font-weight: 700;
+      padding: 9px 15px;
+      font-family: inherit; font-size: 13px; font-weight: 800; color: #F5F0E8;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
       pointer-events: none;
-      opacity: 0; transform: translateY(-6px);
-      transition: opacity .4s ease, transform .4s ease;
+      opacity: 0; transform: translateY(-8px) scale(.96);
+      transition: opacity .4s ease, transform .4s cubic-bezier(0.16, 1, 0.3, 1), filter .12s ease;
+      box-shadow: 0 6px 20px rgba(231, 68, 8, .24);
     }
-    #badge.on { opacity: 1; transform: none; }
-    #badge span { color: #FF6730; }
+    #badge.on { opacity: 1; transform: none; pointer-events: auto; animation: badgePulse 2.4s ease-in-out infinite; }
+    #badge:active { transform: scale(.94); filter: brightness(1.12); }
+    #badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #36D17C; box-shadow: 0 0 8px rgba(54, 209, 124, .9); }
+    #badge .go { color: #FF6730; }
+    @keyframes badgePulse {
+      0%, 100% { box-shadow: 0 6px 18px rgba(231, 68, 8, .20); }
+      50% { box-shadow: 0 7px 28px rgba(255, 103, 48, .52); }
+    }
 
     /* ---------- 오버레이 ---------- */
     .overlay {
@@ -110,6 +120,11 @@
       color: #F5F0E8;
     }
     #start .btn { width: auto; min-width: 210px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      #badge.on { animation: none; }
+      .btn:active { transform: none; }
+    }
   </style>
 </head>
 <body>
@@ -120,7 +135,9 @@
     <div id="hudBest"></div>
   </div>
 
-  <div id="badge">분석 완료 <span>✓</span></div>
+  <button id="badge" data-ui aria-label="분석 완료 — 분석 결과 보기">
+    <span class="dot"></span>분석 완료<span class="go">결과 보기 →</span>
+  </button>
 
   <div id="start" class="overlay">
     <div class="panel">
@@ -128,7 +145,7 @@
       <h1>절벽 등반</h1>
       <p class="howto">탭해서 팔이 향한 홀드를 잡으세요<br>물이 차오르기 전에 더 높이!</p>
       <p id="startBest" class="bestline hidden"></p>
-      <button id="btnStart" class="btn primary">시작하기</button>
+      <button id="btnStart" class="btn primary" data-ui>시작하기</button>
     </div>
   </div>
 
@@ -137,8 +154,8 @@
       <h2>물에 빠졌어요!</h2>
       <div id="overH" class="score">0m</div>
       <p id="overBest" class="bestline"></p>
-      <button id="btnResult" class="btn primary hidden">분석 결과 보기 →</button>
-      <button id="btnRetry" class="btn secondary">다시 도전</button>
+      <button id="btnResult" class="btn primary hidden" data-ui>분석 결과 보기 →</button>
+      <button id="btnRetry" class="btn secondary" data-ui>다시 도전</button>
     </div>
   </div>
 
@@ -188,6 +205,8 @@
     var WATER_GAP0 = 170;                  // 시작 시 물과의 간격
     var WATER_BASE = 13, WATER_ACCEL = 0.5, WATER_M = 0.3, WATER_MAX = 60;
     var WATER_GAP_CAP = 520;               // 물이 뒤처질 수 있는 최대 간격
+    var RING_DUR = 0.42;                   // 그랩 링 수명 (s)
+    var MILESTONE = 50;                    // 마일스톤 간격 (m)
 
     /* ---------- 뷰포트 ---------- */
     var W = 0, H = 0, DPR = 1, wallHalf = 150, edgeGrad = null;
@@ -218,6 +237,63 @@
     function sx(wx) { return W / 2 + wx; }
     function sy(wy) { return H * 0.62 - (wy - camY); }
 
+    /* ---------- 시간대/배경 팔레트 ---------- */
+    function hexToRgb(h) {
+      if (h.charCodeAt(0) === 35) h = h.slice(1);
+      var n = parseInt(h, 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function mix(a, b, k) {
+      return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+    }
+    function rgb(c, a) {
+      var r = c[0] | 0, g = c[1] | 0, b = c[2] | 0;
+      return a == null ? 'rgb(' + r + ',' + g + ',' + b + ')' : 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    }
+    function smooth(k) { return k * k * (3 - 2 * k); }
+
+    /* 고도(m) 키프레임: 협곡의 밤 → 여명 → 일출 → 구름 위 */
+    var ZONES = [
+      { h: 0,   wallTop: '#1A2029', wallBot: '#0B0D11', patch: '#000000', crack: '#070910', crackEdge: '#2E3540', glow: '#21425E', glowA: 0.26, cel: '#A9C2DA', celY: 0.16, star: 1.00, cloud: 0.00, lamp: 1.00 },
+      { h: 80,  wallTop: '#241E26', wallBot: '#100B12', patch: '#070207', crack: '#0B0710', crackEdge: '#3A323E', glow: '#7A4250', glowA: 0.30, cel: '#D7A6AC', celY: 0.20, star: 0.45, cloud: 0.06, lamp: 0.82 },
+      { h: 190, wallTop: '#332420', wallBot: '#18100C', patch: '#1C0E07', crack: '#140A07', crackEdge: '#4E3C30', glow: '#FF6730', glowA: 0.40, cel: '#FFB85E', celY: 0.27, star: 0.00, cloud: 0.40, lamp: 0.42 },
+      { h: 340, wallTop: '#3C4453', wallBot: '#222A36', patch: '#1A2330', crack: '#1A2330', crackEdge: '#5A6A80', glow: '#FFE9C8', glowA: 0.30, cel: '#FFF6E2', celY: 0.14, star: 0.00, cloud: 0.72, lamp: 0.00 },
+    ];
+    ZONES.forEach(function (z) {
+      z._wt = hexToRgb(z.wallTop); z._wb = hexToRgb(z.wallBot);
+      z._pa = hexToRgb(z.patch); z._cr = hexToRgb(z.crack); z._ce = hexToRgb(z.crackEdge);
+      z._gl = hexToRgb(z.glow); z._cl = hexToRgb(z.cel);
+    });
+    function paletteAt(m) {
+      var lo = ZONES[0], hi = ZONES[0], i;
+      if (m >= ZONES[ZONES.length - 1].h) { lo = hi = ZONES[ZONES.length - 1]; }
+      else if (m > ZONES[0].h) {
+        for (i = 0; i < ZONES.length - 1; i++) {
+          if (m >= ZONES[i].h && m < ZONES[i + 1].h) { lo = ZONES[i]; hi = ZONES[i + 1]; break; }
+        }
+      }
+      var k = hi.h > lo.h ? smooth(clamp((m - lo.h) / (hi.h - lo.h), 0, 1)) : 0;
+      return {
+        wallTop: mix(lo._wt, hi._wt, k), wallBot: mix(lo._wb, hi._wb, k),
+        patch: mix(lo._pa, hi._pa, k), crack: mix(lo._cr, hi._cr, k), crackEdge: mix(lo._ce, hi._ce, k),
+        glow: mix(lo._gl, hi._gl, k), cel: mix(lo._cl, hi._cl, k),
+        glowA: lerp(lo.glowA, hi.glowA, k), celY: lerp(lo.celY, hi.celY, k),
+        star: lerp(lo.star, hi.star, k), cloud: lerp(lo.cloud, hi.cloud, k), lamp: lerp(lo.lamp, hi.lamp, k),
+      };
+    }
+    var ZONE_LABELS = ['협곡', '여명', '일출', '구름 위'];
+    function zoneIndexFor(m) { return m >= 340 ? 3 : m >= 190 ? 2 : m >= 80 ? 1 : 0; }
+
+    /* 하늘 요소(별·구름)는 1회 생성 후 재사용 — 화면 비율 기준 */
+    var STARS = [], CLOUDS = [];
+    function initSky() {
+      STARS = [];
+      for (var i = 0; i < 46; i++) STARS.push({ x: rand(), y: rand(), r: 0.5 + rand() * 1.5, ph: rand() * TAU });
+      CLOUDS = [];
+      for (var j = 0; j < 6; j++) CLOUDS.push({ x: rand(), y: rand(), w: 120 + rand() * 160, h: 26 + rand() * 26, v: 5 + rand() * 9, layer: 0.35 + rand() * 0.5 });
+    }
+    initSky();
+
     /* ---------- 게임 상태 ---------- */
     var state = 'start';            // 'start' | 'playing' | 'over'
     var holds = [], chainTop = null, grip = null;
@@ -228,6 +304,15 @@
     var particles = [], bubbles = [];
     var best = 0, newBest = false, lastHudM = -1, cullT = 0, overShown = false;
     try { best = parseInt(localStorage.getItem('cliffClimberBest') || '0', 10) || 0; } catch (e) {}
+
+    /* 배경/연출 상태 */
+    var reduceMotion = false;
+    try { reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+    var MOTION = reduceMotion ? 0.4 : 1;
+    var bgAlt = 0, PAL = paletteAt(0);
+    var combo = 0, comboPop = 0, rings = [];
+    var lastMsM = 0, milestoneT = 0, milestoneTxt = '', flashT = 0;
+    var zoneIdx = 0, zoneLabelT = 0, zoneLabelTxt = '';
 
     /* ---------- 홀드 생성 ---------- */
     function holdSpacingOk(x, y) {
@@ -287,7 +372,8 @@
 
     /* ---------- 파티클 ---------- */
     function burst(wx, wy, kind) {
-      var n = kind === 'splash' ? 22 : kind === 'pop' ? 10 : 8;
+      var base = kind === 'splash' ? 22 : kind === 'pop' ? 10 : 8;
+      var n = reduceMotion ? Math.max(3, Math.round(base * 0.5)) : base;
       for (var i = 0; i < n; i++) {
         var a = rand() * TAU;
         var sp = kind === 'splash' ? 50 + rand() * 150 : kind === 'pop' ? 40 + rand() * 90 : 25 + rand() * 60;
@@ -348,12 +434,18 @@
       armDir = -armDir;
       armT = Math.asin(clamp(ta / (ARM_AMP * armDir), -1, 1)) / ARM_W;
       burst(h.x, h.y, 'pop');
+      /* juice: 콤보 + 그랩 링 */
+      combo++;
+      comboPop = 1;
+      rings.push({ x: h.x, y: h.y, t: 0 });
+      if (combo >= 5 && combo % 5 === 0) burst(h.x, h.y, 'pop');
     }
 
     function slip() {
       lockT = SLIP_LOCK;
       slipFlashT = 0.25;
       shakeT = 0.25;
+      combo = 0;
       var a = armAngle();
       burst(body.x + Math.sin(a) * 34, body.y + 9 + Math.cos(a) * 34, 'dust');
     }
@@ -371,6 +463,10 @@
       gripHand = 'R';
       grabAnim = null; lockT = 0; slipFlashT = 0; shakeT = 0; swayT = 0; sinkT = 0;
       newBest = false; lastHudM = -1; cullT = 0;
+      combo = 0; comboPop = 0; rings = [];
+      lastMsM = 0; milestoneT = 0; flashT = 0; zoneLabelT = 0;
+      zoneIdx = zoneIndexFor(0);
+      bgAlt = 0; PAL = paletteAt(0);
       genAhead();
       initBubbles();
       hudH.textContent = '0m';
@@ -450,6 +546,17 @@
           lastHudM = mm;
           hudH.textContent = mm + 'm';
         }
+        /* 50m 마일스톤 */
+        if (mm >= lastMsM + MILESTONE) {
+          lastMsM = Math.floor(mm / MILESTONE) * MILESTONE;
+          milestoneT = 1.3; milestoneTxt = lastMsM + 'm';
+          if (!reduceMotion) { flashT = 0.18; shakeT = Math.max(shakeT, 0.16); }
+          burst(body.x, body.y - HANG, 'pop');
+        }
+        /* 시간대(존) 진입 라벨 */
+        var zi = zoneIndexFor(mm);
+        if (zi > zoneIdx) { zoneLabelT = 2.0; zoneLabelTxt = ZONE_LABELS[zi]; }
+        zoneIdx = zi;
       } else if (state === 'over') {
         sinkT += dt;
         if (sinkT < 1.1) body.y -= 24 * dt;  // 살짝 가라앉음
@@ -457,9 +564,23 @@
         armT += dt; // 시작 화면: 팔 스윙만 아이들 재생
       }
 
+      /* 배경 고도 보간 (오르면 매끄럽게 시간대 변화) */
+      var targetAlt = Math.max(0, (maxY + HANG) / PX_PER_M);
+      bgAlt += (targetAlt - bgAlt) * Math.min(1, dt * 3);
+      PAL = paletteAt(bgAlt);
+
       camY += (body.y + 30 - camY) * Math.min(1, dt * 6);
       if (slipFlashT > 0) slipFlashT -= dt;
       if (shakeT > 0) shakeT -= dt;
+      if (milestoneT > 0) milestoneT -= dt;
+      if (flashT > 0) flashT -= dt;
+      if (zoneLabelT > 0) zoneLabelT -= dt;
+      if (comboPop > 0) comboPop -= dt * 2.2;
+
+      for (var ri = rings.length - 1; ri >= 0; ri--) {
+        rings[ri].t += dt;
+        if (rings[ri].t >= RING_DUR) rings.splice(ri, 1);
+      }
 
       for (var i = particles.length - 1; i >= 0; i--) {
         var p = particles[i];
@@ -476,23 +597,28 @@
 
     /* ---------- 렌더 ---------- */
     function drawWall() {
-      ctx.fillStyle = '#1C2129';
+      var wg = ctx.createLinearGradient(0, 0, 0, H);
+      wg.addColorStop(0, rgb(PAL.wallTop));
+      wg.addColorStop(1, rgb(PAL.wallBot));
+      ctx.fillStyle = wg;
       ctx.fillRect(-12, -12, W + 24, H + 24);
 
       /* 어두운 바위 패치 (패럴랙스 0.7) */
+      var patchCol = rgb(PAL.patch, 0.16);
       var f = 0.7, off = camY * f, B = 210;
       var i0 = Math.floor((off - H) / B), i1 = Math.ceil((off + H) / B), i;
       for (i = i0; i <= i1; i++) {
         var py = H * 0.62 - (i * B + rnd(i * 3.7) * B - off);
         if (py < -90 || py > H + 90) continue;
         var px = (rnd(i * 7.3) * 1.4 - 0.2) * W;
-        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.fillStyle = patchCol;
         ctx.beginPath();
         ctx.ellipse(px, py, 40 + rnd(i * 1.3) * 70, 22 + rnd(i * 9.1) * 34, (rnd(i * 4.9) - 0.5) * 1.2, 0, TAU);
         ctx.fill();
       }
 
       /* 균열 (패럴랙스 0.5) — 어두운 선 + 엣지 하이라이트 */
+      var crackCol = rgb(PAL.crack, 0.55), crackEdgeCol = rgb(PAL.crackEdge, 0.4);
       f = 0.5; off = camY * f; B = 170;
       i0 = Math.floor((off - H) / B); i1 = Math.ceil((off + H) / B);
       for (i = i0; i <= i1; i++) {
@@ -505,13 +631,13 @@
             pts[s][1] + 22 + rnd(i * 17 + s) * 46,
           ]);
         }
-        ctx.strokeStyle = 'rgba(9,11,14,0.55)';
+        ctx.strokeStyle = crackCol;
         ctx.lineWidth = 1.6;
         ctx.beginPath();
         ctx.moveTo(pts[0][0], pts[0][1]);
         for (s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
         ctx.stroke();
-        ctx.strokeStyle = 'rgba(46,53,64,0.4)';
+        ctx.strokeStyle = crackEdgeCol;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(pts[0][0] + 1.5, pts[0][1] + 1);
@@ -521,6 +647,56 @@
 
       ctx.fillStyle = edgeGrad;
       ctx.fillRect(0, 0, W, H);
+    }
+
+    /* 고도에 따른 천체 글로우 + 별 + 구름 (월드 위 분위기 레이어) */
+    function drawAtmosphere() {
+      var cx = W * 0.72, cy = H * PAL.celY;
+      var R = Math.max(W, H) * 0.62;
+      var rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      rg.addColorStop(0, rgb(PAL.cel, PAL.glowA * 0.9));
+      rg.addColorStop(0.35, rgb(PAL.glow, PAL.glowA * 0.55));
+      rg.addColorStop(1, rgb(PAL.glow, 0));
+      ctx.fillStyle = rg;
+      ctx.fillRect(0, 0, W, H);
+
+      /* 달/해 — 은은한 광구 (암벽 위에 떠 있는 빛) */
+      ctx.fillStyle = rgb(PAL.cel, 0.22);
+      ctx.beginPath(); ctx.arc(cx, cy, 26, 0, TAU); ctx.fill();
+      ctx.fillStyle = rgb(PAL.cel, 0.34 + PAL.glowA * 0.3);
+      ctx.beginPath(); ctx.arc(cx, cy, 15, 0, TAU); ctx.fill();
+
+      /* 별 — 상단부에 살짝 패럴랙스 + 반짝임, 고도 올라가면 페이드아웃 */
+      if (PAL.star > 0.01) {
+        var span = H * 1.5;
+        for (var i = 0; i < STARS.length; i++) {
+          var st = STARS[i];
+          var yy = (st.y * span - camY * 0.05) % span;
+          if (yy < 0) yy += span;
+          if (yy > H * 0.85) continue;
+          var tw = 0.55 + 0.45 * Math.sin(gT * 1.6 + st.ph);
+          ctx.fillStyle = rgb([255, 252, 240], PAL.star * tw * 0.85);
+          ctx.beginPath(); ctx.arc(st.x * W, yy, st.r, 0, TAU); ctx.fill();
+        }
+      }
+
+      /* 구름 — 고고도에서 페이드인, 가로 드리프트 + 패럴랙스 */
+      if (PAL.cloud > 0.01) {
+        var cspan = H * 1.6;
+        for (var j = 0; j < CLOUDS.length; j++) {
+          var c = CLOUDS[j];
+          var cxp = ((c.x * (W + 320) + gT * c.v) % (W + 320)) - 160;
+          var cyy = (c.y * cspan - camY * 0.09 * c.layer) % cspan;
+          if (cyy < 0) cyy += cspan;
+          if (cyy > H + 40) continue;
+          ctx.fillStyle = rgb([244, 248, 252], PAL.cloud * c.layer * 0.55);
+          ctx.beginPath();
+          ctx.ellipse(cxp, cyy, c.w * 0.5, c.h * 0.55, 0, 0, TAU);
+          ctx.ellipse(cxp - c.w * 0.3, cyy + 5, c.w * 0.3, c.h * 0.42, 0, 0, TAU);
+          ctx.ellipse(cxp + c.w * 0.32, cyy + 4, c.w * 0.32, c.h * 0.44, 0, 0, TAU);
+          ctx.fill();
+        }
+      }
     }
 
     function drawHolds() {
@@ -549,6 +725,20 @@
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(x, y + 1, r * 1.12, 0.35, Math.PI - 0.35);
+        ctx.stroke();
+      }
+    }
+
+    /* 성공 그랩 시 확장하는 링 */
+    function drawRings() {
+      for (var i = 0; i < rings.length; i++) {
+        var r = rings[i];
+        var k = r.t / RING_DUR;
+        var rad = lerp(7, 34, easeOut(k));
+        ctx.strokeStyle = rgb([255, 132, 72], (1 - k) * 0.6);
+        ctx.lineWidth = 2.4 * (1 - k) + 0.5;
+        ctx.beginPath();
+        ctx.arc(sx(r.x), sy(r.y), rad, 0, TAU);
         ctx.stroke();
       }
     }
@@ -611,6 +801,14 @@
 
       /* 머리 + 헬멧 하이라이트 + 헤드램프 */
       var hx = bx + Math.sin(swayT * 2.1) * 1.2, hy = by - 18;
+      /* 헤드램프 글로우 — 고도(밤↔낮)에 따라 세기 변화 */
+      if (PAL.lamp > 0.02 && state !== 'over') {
+        var lg = ctx.createRadialGradient(hx, hy - 2, 0, hx, hy - 2, 58);
+        lg.addColorStop(0, 'rgba(255,238,200,' + (0.2 * PAL.lamp).toFixed(3) + ')');
+        lg.addColorStop(1, 'rgba(255,238,200,0)');
+        ctx.fillStyle = lg;
+        ctx.beginPath(); ctx.arc(hx, hy - 2, 58, 0, TAU); ctx.fill();
+      }
       var hg = ctx.createLinearGradient(0, hy - 9, 0, hy + 9);
       hg.addColorStop(0, '#FF6730');
       hg.addColorStop(1, '#E74408');
@@ -638,7 +836,7 @@
       if (wy > H + 50) return;
       var pts = [], x;
       for (x = -10; x <= W + 12; x += 14) {
-        pts.push([x, wy + Math.sin(x * 0.045 + gT * 2.6) * 3.5 + Math.sin(x * 0.012 - gT * 1.4) * 2.5]);
+        pts.push([x, wy + (Math.sin(x * 0.045 + gT * 2.6) * 3.5 + Math.sin(x * 0.012 - gT * 1.4) * 2.5) * MOTION]);
       }
       var i;
       ctx.beginPath();
@@ -685,7 +883,8 @@
       var gap = body.y - water;
       if (gap >= 150) return;
       var k = 1 - Math.max(0, gap) / 150;
-      var al = k * 0.32 * (0.65 + 0.35 * Math.sin(elapsed * 7));
+      var puls = reduceMotion ? 0.85 : (0.65 + 0.35 * Math.sin(elapsed * 7));
+      var al = k * 0.32 * puls;
       var g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
       g.addColorStop(0, 'rgba(231,68,8,0)');
       g.addColorStop(1, 'rgba(231,68,8,' + al.toFixed(3) + ')');
@@ -693,21 +892,72 @@
       ctx.fillRect(0, 0, W, H);
     }
 
+    /* 마일스톤 플래시 / 텍스트 / 콤보 칩 / 시간대 라벨 (화면 좌표) */
+    function drawFX() {
+      if (flashT > 0) {
+        ctx.fillStyle = 'rgba(255,240,225,' + (Math.max(0, flashT) / 0.18 * 0.5).toFixed(3) + ')';
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      if (state === 'playing' && combo >= 3) {
+        var bx = sx(body.x), by = sy(body.y);
+        var pop = 1 + Math.max(0, comboPop) * 0.4 * MOTION;
+        ctx.save();
+        ctx.translate(bx, by - 52);
+        ctx.scale(pop, pop);
+        ctx.font = '800 18px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(231,68,8,0.55)'; ctx.shadowBlur = 10;
+        ctx.fillStyle = '#FF6730';
+        ctx.fillText('×' + combo, 0, 0);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
+      if (milestoneT > 0) {
+        var mk = milestoneT / 1.3;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, mk * 2.2);
+        ctx.font = '800 40px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 16;
+        ctx.fillStyle = '#FF6730';
+        ctx.fillText(milestoneTxt, W / 2, H * 0.33 - (1 - mk) * 24);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
+      if (zoneLabelT > 0) {
+        var za = zoneLabelT > 1.6 ? (2.0 - zoneLabelT) / 0.4
+               : zoneLabelT < 0.4 ? zoneLabelT / 0.4 : 1;
+        ctx.save();
+        ctx.globalAlpha = clamp(za, 0, 1);
+        ctx.font = '700 15px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(245,240,232,0.94)';
+        ctx.fillText('· ' + zoneLabelTxt + ' ·', W / 2, H * 0.42);
+        ctx.restore();
+      }
+    }
+
     function render() {
-      ctx.fillStyle = '#0D0F12';
+      ctx.fillStyle = rgb(PAL.wallBot);
       ctx.fillRect(0, 0, W, H);
       ctx.save();
-      if (shakeT > 0) {
+      if (shakeT > 0 && !reduceMotion) {
         var s = shakeT / 0.25 * 7;
         ctx.translate((rand() * 2 - 1) * s, (rand() * 2 - 1) * s);
       }
       drawWall();
+      drawAtmosphere();
       drawHolds();
+      drawRings();
       drawClimber();
       drawParticles();
       drawWater();
       ctx.restore();
       drawVignette();
+      drawFX();
     }
 
     /* ---------- 루프 ---------- */
@@ -724,6 +974,7 @@
 
     /* ---------- 입력 ---------- */
     window.addEventListener('pointerdown', function (e) {
+      if (e.target && e.target.closest && e.target.closest('[data-ui]')) return; // UI는 자체 탭 처리
       if (state !== 'playing') return;
       e.preventDefault();
       tryGrab();
@@ -743,10 +994,12 @@
     btnStart.addEventListener('click', beginRun);
     btnRetry.addEventListener('click', beginRun);
     btnResult.addEventListener('click', function () { Bridge.contentEnd(); });
+    /* 처리 완료 시 노출되는 인게임 CTA — 탭하면 결과 화면으로 (게임 입력과 분리) */
+    badge.addEventListener('click', function (e) { e.stopPropagation(); Bridge.contentEnd(); });
 
     /* ---------- 브리지 ---------- */
     Bridge.onProcessingDone(function () {
-      setBadge();          // 플레이 중이면 우상단 배지
+      setBadge();          // 플레이 중이면 우상단 결과 보기 CTA
       refreshResultCta();  // 게임오버 화면이 떠 있으면 CTA 라이브 노출
     });
 
