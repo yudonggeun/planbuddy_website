@@ -6,13 +6,11 @@
  *
  * ## 프로토콜
  *
- * 웹 → 앱 (커스텀 스킴 딥링크, WKWebView decidePolicyFor 가 가로채 cancel):
- *   - `cliff://content/active` : 콘텐츠 세션 시작 (게임 시작 / 설문 시작)
- *                                → 앱은 영상 처리가 끝나도 결과 화면 전환을 보류한다.
- *   - `cliff://content/idle`   : 콘텐츠 세션 종료 (결과 보러 가기 탭)
- *                                → 앱은 보류 중이던 결과 화면으로 전환한다.
- *
- * 웹 → 앱 (script message handler):
+ * 웹 → 앱 (WKScriptMessageHandler):
+ *   - `window.webkit.messageHandlers.cliffContentState.postMessage('active'|'idle')`
+ *     : 콘텐츠 세션 시작('active') / 종료('idle').
+ *       active → 앱은 영상 처리가 끝나도 결과 화면 전환을 보류한다.
+ *       idle   → 앱은 보류 중이던 결과 화면으로 전환한다.
  *   - `window.webkit.messageHandlers.cliffShare.postMessage(dataURL)`
  *     : PNG dataURL 을 전달하면 앱이 네이티브 공유 시트를 띄운다.
  *
@@ -23,7 +21,7 @@
  *
  * ## 앱 감지
  * 앱 WKWebView 는 User-Agent 에 `CliffApp` 마커를 추가한다
- * (applicationNameForUserAgent). 브라우저 단독 접속 시 딥링크/핸들러는
+ * (applicationNameForUserAgent). 브라우저 단독 접속 시 메시지 핸들러는
  * 전부 no-op 이 되어 콘텐츠는 일반 웹페이지로 동작한다.
  */
 window.CliffBridge = (function () {
@@ -34,16 +32,14 @@ window.CliffBridge = (function () {
   var listeners = [];
 
   /**
-   * 커스텀 스킴 딥링크 전송. 페이지 전환을 일으키지 않도록
-   * location.href 대신 숨김 iframe 으로 보낸다 (연속 호출에도 안전).
+   * 콘텐츠 세션 상태를 앱에 전송 (WKScriptMessageHandler).
+   * @param {'active'|'idle'} state
    */
-  function send(path) {
-    if (!inApp) return;
-    var frame = document.createElement('iframe');
-    frame.style.display = 'none';
-    frame.src = 'cliff://' + path;
-    document.body.appendChild(frame);
-    setTimeout(function () { frame.remove(); }, 100);
+  function postContentState(state) {
+    if (inApp && window.webkit && window.webkit.messageHandlers &&
+        window.webkit.messageHandlers.cliffContentState) {
+      window.webkit.messageHandlers.cliffContentState.postMessage(state);
+    }
   }
 
   /** 앱이 영상 처리 완료 시 evaluateJavaScript 로 호출한다. */
@@ -60,10 +56,10 @@ window.CliffBridge = (function () {
     inApp: inApp,
 
     /** 콘텐츠 세션 시작 — 앱이 결과 화면 전환을 보류하게 한다. */
-    contentStart: function () { send('content/active'); },
+    contentStart: function () { postContentState('active'); },
 
     /** 콘텐츠 세션 종료 — 보류 중이던 결과 화면으로 전환한다. */
-    contentEnd: function () { send('content/idle'); },
+    contentEnd: function () { postContentState('idle'); },
 
     /** 영상 처리가 이미 완료됐는지. */
     isProcessingDone: function () { return processingDone; },
